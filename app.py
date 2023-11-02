@@ -49,3 +49,18 @@ from sklearn.preprocessing import MinMaxScaler
 scaler=MinMaxScaler(feature_range=(0,1))
 
 data_training_array= scaler.fit_transform(data_training)
+
+#Splitting data into xtrain n ytrain
+
+x_train = []
+y_train = []
+
+for i in range(100, len(data_training_array)):
+    x_train.append(data_training_array[i-100:i])
+    y_train.append(data_training_array[i, 0])
+    
+x_train, y_train = np.array(x_train), np.array(y_train)
+
+#Loading model 
+
+model = load_model('keras_model.h5')
