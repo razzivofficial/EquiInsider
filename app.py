@@ -18,3 +18,19 @@ df = yf.download(user_input, start=start, end=end)
 st.subheader('Data from 01-04-2002 to todays date')
 st.write(df.describe())
 
+st.subheader('Closing Price vs Time chart with 100 MA') #moving avg
+ma100 = df.Close.rolling(100).mean()
+fig = plt.figure(figsize=(12,8))
+plt.plot(ma100)
+plt.plot(df['Close'])
+st.pyplot(fig)
+
+
+st.subheader('Closing Price vs Time chart with 100MA & 200MA')
+ma100 = df.Close.rolling(100).mean()
+ma200 = df.Close.rolling(200).mean()
+fig = plt.figure(figsize=(12,8))
+plt.plot(ma100, 'r')
+plt.plot(ma200, 'g')
+plt.plot(df['Close'] , 'b')
+st.pyplot(fig)
