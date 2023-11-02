@@ -4,104 +4,120 @@ import matplotlib.pyplot as plt
 import yfinance as yf
 from datetime import datetime
 from keras.models import load_model
+from keras.models import Sequential
+from keras.layers import Dense, LSTM
+from sklearn.preprocessing import MinMaxScaler
+from keras.preprocessing.sequence import pad_sequences
 import streamlit as st
 
-start = '2002-04-01'
-end = datetime.now().strftime('%Y-%m-%d')
+# Function to load or create the model
+def load_or_create_model():
+    try:
+        model = load_model('keras_model.h5')
+    except:
+        # Create and train the model if not already saved
+        model = create_and_train_model()  
+    return model
 
+# Function to create and train the model
+def create_and_train_model():
+    # Replace this with your actual model architecture and training logic
+    model = Sequential()
+    # ...
+    return model
+
+# Function to scale and prepare data for predictions
+def prepare_data_for_prediction(data):
+    scaler = MinMaxScaler(feature_range=(0, 1))
+    data_scaled = scaler.fit_transform(data)
+    return scaler, data_scaled
+
+# Function to make future predictions
+def make_future_predictions(model, data, scaler, days):
+    predictions = []
+
+    for i in range(days):
+        # Use the last 100 data points for prediction
+        x_input = data[-100:]
+        x_input = np.reshape(x_input, (1, 100, 1))
+        
+        # Make a prediction
+        y_pred = model.predict(x_input)
+        
+        # Append the prediction to the result and update input for the next iteration
+        predictions.append(y_pred[0, 0])
+        x_input = np.append(x_input, y_pred)[1:]
+
+    # Inverse transform the predictions to the original scale
+    predictions = np.array(predictions).reshape(-1, 1)
+    predictions = scaler.inverse_transform(predictions)[:, 0]
+    return predictions
+
+# Streamlit app
 st.title("EquiInsider")
-user_input= st.text_input('Enter stock ticker from yahoo fin', 'RELIANCE.NS')
-df = yf.download(user_input, start=start, end=end)
+user_input = st.text_input('Enter stock ticker from yahoo fin', 'RELIANCE.NS')
+df = yf.download(user_input, start='2002-04-01', end=datetime.now().strftime('%Y-%m-%d'))
 
-#Describing the data
+# Display raw data
+if st.checkbox('Show Raw Data'):
+    st.subheader('Raw Data')
+    st.write(df)
 
-st.subheader('Data from 01-04-2002 to todays date')
+# Describing the data
+st.subheader('Data from 01-04-2002 to today\'s date')
 st.write(df.describe())
 
-st.subheader('Closing Price vs Time chart with 100 MA') #moving avg
-ma100 = df.Close.rolling(100).mean()
-fig = plt.figure(figsize=(12,8))
-plt.plot(ma100)
-plt.plot(df['Close'])
-st.pyplot(fig)
+# Interactive widget for selecting time range
+start_date = st.date_input("Select start date", datetime(2002, 4, 1))
+end_date = st.date_input("Select end date", datetime.now())
 
+# Filter data based on selected time range
+filtered_data = df.loc[start_date:end_date]
 
-st.subheader('Closing Price vs Time chart with 100MA & 200MA')
-ma100 = df.Close.rolling(100).mean()
-ma200 = df.Close.rolling(200).mean()
-fig = plt.figure(figsize=(12,8))
-plt.plot(ma100, 'r')
-plt.plot(ma200, 'g')
-plt.plot(df['Close'] , 'b')
-st.pyplot(fig)
+# Display closing price vs time chart with 100 MA
+st.subheader('Closing Price vs Time chart with 100 MA')
+ma100 = filtered_data.Close.rolling(100).mean()
+fig1, ax1 = plt.subplots(figsize=(12, 8))
+ax1.plot(ma100, label='100 MA')
+ax1.plot(filtered_data['Close'], label='Closing Price')
+ax1.legend()
+st.pyplot(fig1)
 
-
-#Dividing training and testing data
-
-data_training = pd.DataFrame(df['Close'][0:int(len(df)*0.70)])
-data_testing = pd.DataFrame(df['Close'][int(len(df)*0.70):int(len(df))])
-
-print(data_training.shape)
-print(data_testing.shape)
-
-
-from sklearn.preprocessing import MinMaxScaler
-scaler=MinMaxScaler(feature_range=(0,1))
-
-data_training_array= scaler.fit_transform(data_training)
-
-#Splitting data into xtrain n ytrain
-
-# x_train = []
-# y_train = []
-
-# for i in range(100, len(data_training_array)):
-#     x_train.append(data_training_array[i-100:i])
-#     y_train.append(data_training_array[i, 0])
-    
-# x_train, y_train = np.array(x_train), np.array(y_train)
-
-#Loading model 
-
-model = load_model('keras_model.h5')
-
-#Testing and Pradictions from past 100days data
-
-past_100_days = data_training.tail(100)
-final_df = pd.concat([past_100_days, data_testing], ignore_index=True)
-input_data = scaler.fit_transform(final_df)
-
-
-#Testing 
-
-from keras.preprocessing.sequence import pad_sequences
-
-x_test = []
-y_test = []
-
-for i in range(100, input_data.shape[0]):
-    x_test.append(input_data[i-100: i, 0])
-    y_test.append(input_data[i, 0])
-
-x_test = np.array(x_test)
-y_test = np.array(y_test)
-
-x_test = pad_sequences(x_test, maxlen=100, dtype='float32', padding='post', truncating='post')
-y_predicted = model.predict(x_test)
-
-
-scaler= scaler.scale_
-scale_factor = 1/scaler[0]
-y_predicted = y_predicted * scale_factor
-y_test = y_test * scale_factor
-
-
-#prediced final graph
-st.subheader('Prediction vs Actual value graph')
-fig2 = plt.figure(figsize=(12,8))
-plt.plot(y_test, 'b', label='Original Price')
-plt.plot(y_predicted, 'r', label='Predicted Price')
-plt.xlabel('Time')
-plt.ylabel('Price')
-plt.legend()
+# Display closing price vs time chart with 100 MA & 200 MA
+st.subheader('Closing Price vs Time chart with 100 MA & 200 MA')
+ma200 = filtered_data.Close.rolling(200).mean()
+fig2, ax2 = plt.subplots(figsize=(12, 8))
+ax2.plot(ma100, 'r', label='100 MA')
+ax2.plot(ma200, 'g', label='200 MA')
+ax2.plot(filtered_data['Close'], 'b', label='Closing Price')
+ax2.legend()
 st.pyplot(fig2)
+
+# Divide training and testing data
+data_training = pd.DataFrame(filtered_data['Close'][0:int(len(filtered_data) * 0.70)])
+data_testing = pd.DataFrame(filtered_data['Close'][int(len(filtered_data) * 0.70):int(len(filtered_data))])
+
+# Display data shapes
+st.subheader('Training and Testing Data Shapes')
+st.write(f'Training Data Shape: {data_training.shape}')
+st.write(f'Testing Data Shape: {data_testing.shape}')
+
+# Load or create the model
+model = load_or_create_model()
+
+# Prepare data for prediction
+scaler, data_scaled = prepare_data_for_prediction(data_training)
+
+# Make future predictions
+future_days = st.slider("Select number of days for future predictions", min_value=1, max_value=30, value=30)
+future_predictions = make_future_predictions(model, data_scaled, scaler, future_days)
+
+# Display predicted vs actual graph
+st.subheader('Prediction vs Actual value graph')
+fig3, ax3 = plt.subplots(figsize=(12, 8))
+ax3.plot(data_testing.index, data_testing['Close'], 'b', label='Original Price')
+ax3.plot(pd.date_range(start=end_date, periods=future_days), future_predictions, 'r', label='Predicted Price')
+ax3.set_xlabel('Time')
+ax3.set_ylabel('Price')
+ax3.legend()
+st.pyplot(fig3)
