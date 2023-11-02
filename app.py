@@ -52,15 +52,56 @@ data_training_array= scaler.fit_transform(data_training)
 
 #Splitting data into xtrain n ytrain
 
-x_train = []
-y_train = []
+# x_train = []
+# y_train = []
 
-for i in range(100, len(data_training_array)):
-    x_train.append(data_training_array[i-100:i])
-    y_train.append(data_training_array[i, 0])
+# for i in range(100, len(data_training_array)):
+#     x_train.append(data_training_array[i-100:i])
+#     y_train.append(data_training_array[i, 0])
     
-x_train, y_train = np.array(x_train), np.array(y_train)
+# x_train, y_train = np.array(x_train), np.array(y_train)
 
 #Loading model 
 
 model = load_model('keras_model.h5')
+
+#Testing and Pradictions from past 100days data
+
+past_100_days = data_training.tail(100)
+final_df = pd.concat([past_100_days, data_testing], ignore_index=True)
+input_data = scaler.fit_transform(final_df)
+
+
+#Testing 
+
+from keras.preprocessing.sequence import pad_sequences
+
+x_test = []
+y_test = []
+
+for i in range(100, input_data.shape[0]):
+    x_test.append(input_data[i-100: i, 0])
+    y_test.append(input_data[i, 0])
+
+x_test = np.array(x_test)
+y_test = np.array(y_test)
+
+x_test = pad_sequences(x_test, maxlen=100, dtype='float32', padding='post', truncating='post')
+y_predicted = model.predict(x_test)
+
+
+scaler= scaler.scale_
+scale_factor = 1/scaler[0]
+y_predicted = y_predicted * scale_factor
+y_test = y_test * scale_factor
+
+
+#prediced final graph
+st.subheader('Prediction vs Actual value graph')
+fig2 = plt.figure(figsize=(12,8))
+plt.plot(y_test, 'b', label='Original Price')
+plt.plot(y_predicted, 'r', label='Predicted Price')
+plt.xlabel('Time')
+plt.ylabel('Price')
+plt.legend()
+st.pyplot(fig2)
