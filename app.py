@@ -1,3 +1,4 @@
+# Importing necessary libraries
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -7,7 +8,6 @@ from keras.models import load_model
 from keras.models import Sequential
 from keras.layers import Dense, LSTM
 from sklearn.preprocessing import MinMaxScaler
-from keras.preprocessing.sequence import pad_sequences
 import streamlit as st
 
 # Function to load or create the model
@@ -19,11 +19,26 @@ def load_or_create_model():
         model = create_and_train_model()  
     return model
 
-# Function to create and train the model
+# Function to create and train the model (Fill in this part with your actual model architecture and training logic)
 def create_and_train_model():
-    # Replace this with your actual model architecture and training logic
     model = Sequential()
-    # ...
+    # Replace the following lines with your actual model architecture and training logic
+    model.add(LSTM(units=50, return_sequences=True, input_shape=(100, 1)))
+    model.add(LSTM(units=50, return_sequences=True))
+    model.add(LSTM(units=50))
+    model.add(Dense(units=1))
+
+    model.compile(optimizer='adam', loss='mean_squared_error')
+
+    # Replace data_training with your actual training data
+    data_training = np.random.rand(1000, 1)
+    data_training = np.reshape(data_training, (data_training.shape[0], data_training.shape[1], 1))
+
+    model.fit(data_training, data_training, epochs=10, batch_size=32)
+
+    # Save the trained model
+    model.save('keras_model.h5')
+
     return model
 
 # Function to scale and prepare data for predictions
@@ -55,8 +70,8 @@ def make_future_predictions(model, data, scaler, days):
 
 # Streamlit app
 st.title("EquiInsider")
-user_input = st.text_input('Enter stock ticker from yahoo fin', 'RELIANCE.NS')
-df = yf.download(user_input, start='2002-04-01', end=datetime.now().strftime('%Y-%m-%d'))
+user_input = st.text_input('Enter stock name from NSE'+'.NS', 'RELIANCE.NS')
+df = yf.download(user_input, start='2013-01-01', end=datetime.now().strftime('%Y-%m-%d'))
 
 # Display raw data
 if st.checkbox('Show Raw Data'):
@@ -64,11 +79,11 @@ if st.checkbox('Show Raw Data'):
     st.write(df)
 
 # Describing the data
-st.subheader('Data from 01-04-2002 to today\'s date')
+st.subheader('Data from 01-04-2013 to Today')
 st.write(df.describe())
 
 # Interactive widget for selecting time range
-start_date = st.date_input("Select start date", datetime(2002, 4, 1))
+start_date = st.date_input("Select start date", datetime(2013, 1, 1))
 end_date = st.date_input("Select end date", datetime.now())
 
 # Filter data based on selected time range
@@ -112,11 +127,16 @@ scaler, data_scaled = prepare_data_for_prediction(data_training)
 future_days = st.slider("Select number of days for future predictions", min_value=1, max_value=30, value=30)
 future_predictions = make_future_predictions(model, data_scaled, scaler, future_days)
 
+# Display predicted prices in list format
+st.subheader(f'Predicted Prices for the Next {future_days} Days:')
+predicted_prices_df = pd.DataFrame({'Date': pd.date_range(start=end_date, periods=future_days), 'Predicted Price': future_predictions})
+st.write(predicted_prices_df)
+
 # Display predicted vs actual graph
 st.subheader('Prediction vs Actual value graph')
 fig3, ax3 = plt.subplots(figsize=(12, 8))
-ax3.plot(data_testing.index, data_testing['Close'], 'b', label='Original Price')
-ax3.plot(pd.date_range(start=end_date, periods=future_days), future_predictions, 'r', label='Predicted Price')
+ax3.plot(data_testing.index, data_testing['Close'], 'b', label='Actual Price')
+ax3.plot(predicted_prices_df['Date'], predicted_prices_df['Predicted Price'], 'r', label='Predicted Price')
 ax3.set_xlabel('Time')
 ax3.set_ylabel('Price')
 ax3.legend()
